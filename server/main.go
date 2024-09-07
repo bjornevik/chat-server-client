@@ -1,8 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
+	"os"
+	"strings"
+	"sync"
+	"time"
 )
 
 // TODO: Better handling of env variables
@@ -12,39 +17,99 @@ const (
 	SERVER_TYPE = "tcp"
 )
 
+var (
+	connections = make(map[net.Conn]bool)
+	mu          sync.Mutex
+	logFile     *os.File
+)
+
 func main() {
-	listener, err := net.Listen(SERVER_TYPE, fmt.Sprintf("%v:%v", SERVER_HOST, SERVER_PORT))
+	listener, err := net.Listen(SERVER_TYPE, fmt.Sprintf("%s:%s", SERVER_HOST, SERVER_PORT))
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
 		return
 	}
-
 	defer listener.Close()
 
-	fmt.Printf("Listening on %v:%v", SERVER_HOST, SERVER_PORT)
+	logFileName := fmt.Sprintf("server_log.txt")
+	logFile, err = os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Println("Error creating log file: ", err)
+		return
+	}
+	defer logFile.Close()
+
+	logFile.WriteString("Server started at: " + time.Now().Format(time.RFC3339) + "\n")
+
+	fmt.Printf("Listening on %s:%s\n", SERVER_HOST, SERVER_PORT)
 
 	for {
-		connection, err := listener.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
 			fmt.Println("Error accepting connection: ", err.Error())
 			continue
 		}
-		go processClient(connection)
+
+		mu.Lock()
+		connections[conn] = true
+		mu.Unlock()
+
+		go handleConnection(conn)
 	}
 }
 
-func processClient(conn net.Conn) {
-	buffer := make([]byte, 1024)
-	mLen, err := conn.Read(buffer)
-	if err != nil {
-		fmt.Println("Error reading: ", err.Error())
-		return
+func handleConnection(conn net.Conn) {
+	logMessage(fmt.Sprintf("[%s] A client connected", time.Now().Format(time.RFC3339)))
+	// Remove from connections and close connection once this function stops running
+	defer func() {
+		mu.Lock()
+		delete(connections, conn)
+		mu.Unlock()
+		conn.Close()
+		logMessage(fmt.Sprintf("[%s] A client disconnected", time.Now().Format(time.RFC3339)))
+	}()
+
+	reader := bufio.NewReader(conn)
+
+	for {
+		message, err := reader.ReadString('\n')
+		if err != nil {
+			return
+		}
+
+		broadcastMessage(message, conn)
 	}
+}
 
-	// TODO: Write to log file
-	// TODO: Output message to all clients
+func broadcastMessage(message string, sender net.Conn) {
+	mu.Lock()
+	defer mu.Unlock()
 
-	fmt.Println("Received: ", string(buffer[:mLen]))
-	_, err = conn.Write([]byte("Message received: " + string(buffer[:mLen])))
-	conn.Close() // TODO: Keep connection open
+	msg := strings.TrimSpace(message)
+	msg = fmt.Sprintf("[%s] %s", time.Now().Format(time.RFC3339), msg)
+
+	// Only log messages when broadcasting
+	logMessage(msg)
+
+	for conn := range connections {
+		// Don't send the message back to the sender
+		if conn != sender {
+			_, err := conn.Write([]byte(msg + "\n"))
+			if err != nil {
+				fmt.Println("Error broadcasting to connection:", err)
+				conn.Close()
+				delete(connections, conn)
+			}
+		}
+	}
+}
+
+func logMessage(msg string) {
+	fmt.Println(msg)
+	if logFile != nil {
+		_, err := logFile.WriteString(msg + "\n")
+		if err != nil {
+			fmt.Println("Error writing to log file:", err)
+		}
+	}
 }
