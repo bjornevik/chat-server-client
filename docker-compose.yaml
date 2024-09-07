@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  server:
+    build:
+      context: ./server
+    container_name: server
+    environment:
+      - SERVER_ADDRESS=0.0.0.0
+      - SERVER_PORT=8080
+    ports:
+      - "8080:8080"
+    networks:
+      - chat-network
+
+  client1:
+    build:
+      context: ./client
+    container_name: client1
+    environment:
+      - SERVER_ADDRESS=server
+      - SERVER_PORT=8080
+    depends_on:
+      - server
+    networks:
+      - chat-network
+
+  client2:
+    build:
+      context: ./client
+    container_name: client2
+    environment:
+      - SERVER_ADDRESS=server
+      - SERVER_PORT=8080
+    depends_on:
+      - server
+    networks:
+      - chat-network
+
+  client3:
+    build:
+      context: ./client
+    container_name: client3
+    environment:
+      - SERVER_ADDRESS=server
+      - SERVER_PORT=8080
+    depends_on:
+      - server
+    networks:
+      - chat-network
+
+networks:
+  chat-network:
+    driver: bridge
