@@ -10,11 +10,10 @@ import (
 )
 
 const (
-	SERVER_HOST    = "localhost"
-	SERVER_PORT    = "8081"
-	SERVER_TYPE    = "tcp"
-	RETRY_DURATION = 1 * time.Minute // Try to reconnect for 1 minute before exiting
-	RETRY_INTERVAL = 5 * time.Second // Try to reconnect every 5 seconds
+	DEFAULT_ADDRESS = "localhost"
+	DEFAULT_PORT    = "8080"
+	RETRY_DURATION  = 1 * time.Minute // Try to reconnect for 1 minute before exiting
+	RETRY_INTERVAL  = 5 * time.Second // Try to reconnect every 5 seconds
 )
 
 func main() {
@@ -75,8 +74,17 @@ func listen(conn net.Conn) {
 func connectWithRetry() (net.Conn, error) {
 	startTime := time.Now()
 
+	address := os.Getenv("SERVER_ADDRESS")
+	if address == "" {
+		address = DEFAULT_ADDRESS
+	}
+	port := os.Getenv("SERVER_PORT")
+	if port == "" {
+		port = DEFAULT_PORT
+	}
+
 	for {
-		conn, err := net.Dial(SERVER_TYPE, fmt.Sprintf("%v:%v", SERVER_HOST, SERVER_PORT))
+		conn, err := net.Dial("tcp", fmt.Sprintf("%v:%v", address, port))
 		if err == nil {
 			return conn, nil
 		}
