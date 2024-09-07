@@ -33,8 +33,8 @@ func main() {
 	go listen(conn)
 
 	reader := bufio.NewReader(os.Stdin)
+	// Enter messages
 	for {
-		// handler(conn, reader)
 		fmt.Print("> ")
 		input, _ := reader.ReadString('\n')
 		input = strings.TrimSpace(input)

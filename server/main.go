@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-// TODO: Better handling of env variables
 const (
 	DEFAULT_ADDRESS = "localhost"
 	DEFAULT_PORT    = "8080"
@@ -67,6 +66,7 @@ func main() {
 
 func handleConnection(conn net.Conn) {
 	logMessage(fmt.Sprintf("[%s] A client connected", time.Now().Format(time.RFC3339)))
+
 	// Remove from connections and close connection once this function stops running
 	defer func() {
 		mu.Lock()
