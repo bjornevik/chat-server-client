@@ -24,6 +24,8 @@ services:
       - server
     networks:
       - chat-network
+    stdin_open: true
+    tty: true
 
   client2:
     build:
@@ -36,6 +38,8 @@ services:
       - server
     networks:
       - chat-network
+    stdin_open: true
+    tty: true
 
   client3:
     build:
@@ -48,6 +52,8 @@ services:
       - server
     networks:
       - chat-network
+    stdin_open: true
+    tty: true
 
 networks:
   chat-network:
