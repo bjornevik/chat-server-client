@@ -12,9 +12,8 @@ import (
 
 // TODO: Better handling of env variables
 const (
-	SERVER_HOST = "localhost"
-	SERVER_PORT = "8081"
-	SERVER_TYPE = "tcp"
+	DEFAULT_ADDRESS = "localhost"
+	DEFAULT_PORT    = "8080"
 )
 
 var (
@@ -24,12 +23,22 @@ var (
 )
 
 func main() {
-	listener, err := net.Listen(SERVER_TYPE, fmt.Sprintf("%s:%s", SERVER_HOST, SERVER_PORT))
+	address := os.Getenv("SERVER_ADDRESS")
+	if address == "" {
+		address = DEFAULT_ADDRESS
+	}
+	port := os.Getenv("SERVER_PORT")
+	if port == "" {
+		port = DEFAULT_PORT
+	}
+
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", address, port))
 	if err != nil {
-		fmt.Println("Error listening:", err.Error())
+		fmt.Println("Error starting server:", err.Error())
 		return
 	}
 	defer listener.Close()
+	fmt.Printf("Listening on %s:%s\n", address, port)
 
 	logFileName := fmt.Sprintf("server_log.txt")
 	logFile, err = os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
@@ -40,8 +49,6 @@ func main() {
 	defer logFile.Close()
 
 	logFile.WriteString("Server started at: " + time.Now().Format(time.RFC3339) + "\n")
-
-	fmt.Printf("Listening on %s:%s\n", SERVER_HOST, SERVER_PORT)
 
 	for {
 		conn, err := listener.Accept()
